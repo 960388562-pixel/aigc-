@@ -1,0 +1,61 @@
+.specular-slot{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  vertical-align:middle;
+}
+.specular-slot .specular-button{
+  font-family:inherit;
+  white-space:nowrap;
+}
+.site-specular-button{
+  min-height:56px;
+}
+.site-slot--enter .specular-button{
+  min-width:112px;
+  margin-top:18px;
+}
+.site-slot--watch .specular-button{
+  min-width:150px;
+}
+.site-slot--action{min-width:154px}
+.site-slot--action .specular-button{width:100%}
+.site-video-nav{
+  width:48px;
+  height:48px;
+  min-height:48px;
+  padding:0!important;
+  font-size:17px!important;
+}
+.site-video-nav .specular-button__label{line-height:1}
+
+.info-card__specular-mount{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  display:block;
+  overflow:hidden;
+  pointer-events:none;
+  border-radius:inherit;
+}
+.site-info-card-specular{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  padding:0!important;
+  border-radius:8px;
+  background:transparent!important;
+  box-shadow:none!important;
+  pointer-events:none;
+}
+.site-info-card-specular .specular-button__label{display:none}
+.info-card__top,
+.info-card__rows,
+.stats{position:relative;z-index:1}
+
+@media (max-width:560px){
+  .hero-actions .site-slot--action{width:100%}
+  .site-slot--action .specular-button{min-height:54px}
+  .site-slot--enter .specular-button{margin-top:16px}
+}

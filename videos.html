@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>影片展厅 — 赵健翔 AI Visual Designer</title>
+  <meta name="description" content="赵健翔 AIGC 影像作品展厅：AI 短片、商业广告、产品宣传与视觉实验。" />
+  <meta name="theme-color" content="#000" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ctext x='32' y='44' font-family='Arial Black' font-size='32' fill='%23fff' text-anchor='middle'%3EZ%3C/text%3E%3C/svg%3E" />
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      background:#000;color:#fff;
+      font-family:-apple-system,"Helvetica Neue","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+      overflow-x:hidden;
+    }
+    a{color:inherit;text-decoration:none}
+    .accent{color:#c8ff00}
+
+    /* MicroSlats signal field — full-page generative film backdrop */
+    .micro-slats-bg{
+      position:fixed;inset:0;z-index:0;overflow:hidden;
+      background:#000;pointer-events:none;
+    }
+    .micro-slats-bg canvas{position:absolute;inset:0;display:block;width:100%;height:100%}
+    /* readability scrim — keeps the white type legible over the bright field */
+    .film-veil{
+      position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:
+        radial-gradient(120% 95% at 20% 38%,
+          rgba(0,0,0,.78) 0%,
+          rgba(0,0,0,.58) 32%,
+          rgba(0,0,0,.14) 64%,
+          rgba(0,0,0,.38) 100%),
+        linear-gradient(180deg,
+          rgba(0,0,0,.52) 0%,
+          rgba(0,0,0,.06) 24%,
+          rgba(0,0,0,.06) 62%,
+          rgba(0,0,0,.58) 100%);
+    }
+    .head-label,.head-title,.head-desc{text-shadow:0 2px 28px rgba(0,0,0,.9),0 1px 4px rgba(0,0,0,.7)}
+
+    .topbar{
+      position:fixed;top:0;left:0;right:0;z-index:100;
+      display:flex;justify-content:space-between;align-items:flex-start;
+      padding:28px 40px;
+    }
+    .logo{line-height:.9;font-weight:900;letter-spacing:-.02em;font-size:22px}
+    .logo sup{font-size:14px;vertical-align:super}
+    .nav{display:flex;gap:32px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);padding-top:6px}
+    .nav a{transition:color .3s}
+    .nav a:hover{color:#fff}
+    .nav .dot{color:rgba(255,255,255,.2)}
+    .nav .active{color:#fff}
+
+    .page{position:relative;z-index:1;padding:140px 40px 60px;max-width:1400px;margin:0 auto}
+
+    .head-label{
+      display:flex;align-items:center;gap:14px;
+      font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);
+      margin-bottom:32px;
+    }
+    .head-label::before{content:"";width:36px;height:1px;background:rgba(255,255,255,.3)}
+    .head-title{
+      font-size:clamp(40px,5.5vw,80px);
+      font-weight:900;line-height:1.02;letter-spacing:-.03em;
+      margin-bottom:24px;
+    }
+    .head-desc{
+      font-size:15px;line-height:1.7;color:rgba(255,255,255,.58);
+      max-width:520px;margin-bottom:48px;
+    }
+
+    /* main player */
+    .player-wrap{
+      width:100%;aspect-ratio:16/9;background:#000;
+      border-radius:8px;overflow:hidden;position:relative;
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .player-wrap video{width:100%;height:100%;object-fit:contain;background:#000}
+
+    .player-info{
+      display:grid;grid-template-columns:1fr 280px;gap:48px;
+      padding:32px 0 60px;
+    }
+    .player-info h2{
+      font-size:clamp(24px,2.5vw,36px);font-weight:800;line-height:1.2;
+    }
+    .player-info h2 span{
+      display:block;margin-top:8px;font-size:10px;letter-spacing:.16em;
+      text-transform:uppercase;color:rgba(255,255,255,.35);font-weight:400;
+    }
+    .player-info .desc{margin-top:16px;font-size:14px;line-height:1.8;color:rgba(255,255,255,.5);max-width:60ch}
+    .player-side{border-top:1px solid rgba(255,255,255,.1);padding-top:16px}
+    .player-side .mono{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px}
+    .player-side p{font-size:13px;line-height:1.8;color:rgba(255,255,255,.6);margin-bottom:16px}
+    .tags{display:flex;flex-wrap:wrap;gap:8px}
+    .tags span{
+      font-size:10px;letter-spacing:.08em;padding:5px 12px;
+      border:1px solid rgba(255,255,255,.15);border-radius:100px;
+      color:rgba(255,255,255,.6);
+    }
+
+    /* fluid carousel - liquid bend matching FlexCarousel params */
+    .carousel{
+      position:relative;width:100%;height:560px;overflow:hidden;
+      perspective:2000px;
+      cursor:grab;
+      touch-action:pan-y;
+      user-select:none;
+    }
+    .carousel:active{cursor:grabbing}
+    .carousel-track{
+      position:absolute;top:50%;left:50%;
+      transform-style:preserve-3d;
+    }
+    .carousel-card{
+      position:absolute;left:0;top:0;
+      width:380px;height:280px;
+      margin-left:-190px;margin-top:-140px;
+      border-radius:0;overflow:hidden;
+      background:#111;border:1px solid rgba(255,255,255,.08);
+      transition:transform .6s cubic-bezier(.22,1,.36,1), opacity .6s, border-color .3s;
+      transform-style:preserve-3d;
+    }
+    .carousel-card video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+    .carousel-card .num{
+      position:absolute;left:10px;top:10px;z-index:2;
+      font-size:9px;letter-spacing:.1em;color:rgba(255,255,255,.7);
+      background:rgba(0,0,0,.6);padding:3px 8px;border-radius:3px;
+    }
+    .carousel-card.active{border-color:#c8ff00}
+    .carousel-caption{
+      position:absolute;bottom:-60px;left:0;right:0;text-align:center;
+      font-size:15px;color:#fff;font-weight:600;
+    }
+    .carousel-caption .sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;font-weight:400}
+
+    .carousel-nav{
+      display:flex;justify-content:center;gap:16px;margin-top:20px;
+    }
+    .carousel-nav button{
+      width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.2);
+      background:transparent;color:#fff;font-size:16px;cursor:pointer;
+      transition:all .3s;
+    }
+    .carousel-nav button:hover{background:#fff;color:#000;border-color:#fff}
+
+    @media (max-width:900px){
+      .page{padding:120px 20px 40px}
+      .topbar{padding:20px}
+      .nav{gap:16px;font-size:10px}
+      .player-info{grid-template-columns:1fr;gap:24px}
+      .carousel{height:320px}
+      .carousel-card{width:240px;height:150px;margin-left:-120px;margin-top:-75px}
+    }
+  </style>
+  <link rel="stylesheet" href="assets/css/specular-buttons.css" />
+</head>
+<body>
+  <div class="micro-slats-bg" id="filmBackground" aria-hidden="true"></div>
+  <div class="film-veil" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a href="index.html" class="logo">Z<sup>°</sup><br>WORKS</a>
+    <nav class="nav">
+      <a href="portfolio.html">关于</a>
+      <span class="dot">·</span>
+      <a href="videos.html" class="active">影片</a>
+      <span class="dot">·</span>
+      <a href="portfolio.html#contact">联系</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <a href="portfolio.html" class="back">← 返回作品集</a>
+
+    <div class="head-label">Film Reel / 影片展厅</div>
+    <h1 class="head-title">所有影片，<br><span class="accent">在这里观看。</span></h1>
+    <p class="head-desc">从品牌广告到视觉实验，每一支都是从脚本到成片的完整作品。点击下方缩略图切换，播放器直接在线观看。</p>
+
+    <div class="player-wrap" id="playerWrap">
+      <video id="mainPlayer" controls playsinline preload="metadata"></video>
+    </div>
+
+    <div class="player-info">
+      <div>
+        <h2 id="pTitle">—<span id="pSub">—</span></h2>
+        <p class="desc" id="pDesc"></p>
+      </div>
+      <div class="player-side">
+        <div class="mono">Role / 角色</div>
+        <p id="pRole"></p>
+        <div class="mono">Tags / 标签</div>
+        <div class="tags" id="pTags"></div>
+      </div>
+    </div>
+
+    <div class="list-head">
+      <h3>全部影片</h3>
+      <span id="pCount">— Films</span>
+    </div>
+    <div class="carousel" id="carousel">
+      <div class="carousel-track" id="carouselTrack"></div>
+    </div>
+    <div class="carousel-nav">
+      <span class="specular-slot">
+        <span
+          data-specular-button
+          data-sb-label="←"
+          data-sb-event="film-prev"
+          data-sb-class="site-video-nav"
+        ></span>
+      </span>
+      <span class="specular-slot">
+        <span
+          data-specular-button
+          data-sb-label="→"
+          data-sb-event="film-next"
+          data-sb-class="site-video-nav"
+        ></span>
+      </span>
+    </div>
+  </main>
+
+  <script src="assets/js/specular-buttons.iife.js"></script>
+  <script>
+  (function(){
+    "use strict";
+    const films = [
+      {
+        id:"lion", num:"01",
+        title:"醒狮 · 非遗新生",
+        sub:"Awakening Lion / AI Short Film / 2026",
+        src:"assets/video/lion-film.mp4",
+        desc:"以岭南醒狮为线索，用生成式影像重建传统非遗的当代质感。从脚本与分镜开始，建立统一的国风视觉体系；在生成阶段持续修正 AI 素材的结构与动态瑕疵，最终完成剪辑、调色与声音合成。比起复刻传统，更想找到它今天被观看的方式。",
+        role:"独立完成 / 策划、分镜、AIGC 视觉生成、剪辑、调色",
+        tags:["AI 短片","非遗","国风视觉"]
+      },
+      {
+        id:"tame", num:"02",
+        title:"试图驯服 AI",
+        sub:"Tame AI / Commercial Short / 2026",
+        src:"assets/video/tame-film.mp4",
+        desc:"为商业短视频构建统一的电影感视觉。使用多款主流 AIGC 模型生成影视级画面与动态镜头，以提示词工程控制光影、色调与风格；通过后期解决镜头卡顿、人物形变与画面连贯性问题，在控制成本的同时精准落地客户诉求。",
+        role:"独立负责 / 视觉生成、动态镜头、剪辑、调色、声音与包装",
+        tags:["商业短片","AIGC","动态影像"]
+      },
+      {
+        id:"creative-ad", num:"03",
+        title:"AI 创意广告",
+        sub:"Creative AI Ad / AIGC Short / 2026",
+        src:"assets/video/ai-creative-ad.mp4",
+        desc:"一支纯 AI 生成的创意短片广告。从概念脚本到镜头生成，用提示词构建超现实视觉场景，在短时间内完成叙事与情绪传达。整个过程涵盖了从文案到分镜、从静态生成到动态镜头的完整 AIGC 工作流。",
+        role:"独立完成 / 策划、AIGC 视觉生成、剪辑、调色",
+        tags:["AI 广告","AIGC","创意短片"]
+      },
+      {
+        id:"visual-reel", num:"04",
+        title:"AI 视觉影像集",
+        sub:"Visual Reel / AIGC Showcase / 2026",
+        src:"assets/video/ai-visual-reel.mp4",
+        desc:"一组 AI 生成视觉片段的集合展示。涵盖不同风格、光影与材质的影像探索，呈现生成式工具在视觉表达上的可能性边界。每一段都是一次独立的视觉实验，拼合在一起形成一条关于光、色彩与氛围的影像线索。",
+        role:"独立完成 / 视觉实验、生成、剪辑与配乐",
+        tags:["视觉集锦","AIGC","影像实验"]
+      },
+      {
+        id:"beer-ad", num:"05",
+        title:"啤酒品牌 AI 广告",
+        sub:"Beer Brand Commercial / 2026",
+        src:"assets/video/beer-ad.mp4",
+        desc:"为啤酒品牌打造的 AI 生成广告片。围绕产品气质构建夏日场景与饮品质感，用生成式画面呈现清凉、松弛的品牌氛围。从产品视觉到情绪场景，用 AI 工具快速验证不同方向，最终选定与品牌调性最契合的视觉方案。",
+        role:"独立完成 / 创意策划、AIGC 视觉、后期包装",
+        tags:["商业广告","品牌","AIGC"]
+      },
+      {
+        id:"gongyecui", num:"06",
+        title:"贡野萃 · 产品宣传短片",
+        sub:"Gongyecui Product Film / 2026",
+        src:"assets/video/gongyecui-product.mp4",
+        desc:"为「贡野萃」品牌打造的产品宣传短片。围绕产品天然、草本的品牌调性，用 AIGC 视觉构建自然场景与产品质感，传递品牌主张。从脚本到成片独立完成，精准匹配品牌调性与传播需求。",
+        role:"独立完成 / 创意策划、AIGC 视觉、剪辑、后期",
+        tags:["产品宣传","品牌短片","AIGC"]
+      },
+      {
+        id:"kawai", num:"07",
+        title:"咖位 · 产品宣传短片",
+        sub:"Kawai Product Film / 2026",
+        src:"assets/video/kawai-product.mp4",
+        desc:"为「咖位」品牌打造的产品宣传短片。以咖啡产品为核心，用生成式影像构建日常与品质感兼具的视觉场景，让品牌调性在短时间内被感知。兼顾产品展示与情绪氛围，适合社交媒体传播。",
+        role:"独立完成 / 创意策划、AIGC 视觉、剪辑、后期",
+        tags:["产品宣传","咖啡品牌","AIGC"]
+      }
+    ];
+
+    const player = document.getElementById("mainPlayer");
+    const track = document.getElementById("carouselTrack");
+    const carousel = document.getElementById("carousel");
+    const pTitle = document.getElementById("pTitle");
+    const pSub = document.getElementById("pSub");
+    const pDesc = document.getElementById("pDesc");
+    const pRole = document.getElementById("pRole");
+    const pTags = document.getElementById("pTags");
+    const pCount = document.getElementById("pCount");
+
+    pCount.textContent = films.length + " Films";
+
+    let activeIdx = 0;
+    const cardW = window.innerWidth < 900 ? 260 : 380;
+
+    films.forEach((f, i) => {
+      const card = document.createElement("div");
+      card.className = "carousel-card";
+      card.innerHTML =
+        '<span class="num">' + f.num + "</span>" +
+        '<video src="' + f.src + '" muted loop playsinline preload="metadata"></video>' +
+        '<div class="carousel-caption"><div>' + f.title + '</div><div class="sub">' + f.sub.split(" / ")[0] + '</div></div>';
+      card.addEventListener("click", () => { if (Math.abs(dragX) < 5) loadFilm(i); });
+      const vid = card.querySelector("video");
+      card.addEventListener("mouseenter", () => vid.play().catch(()=>{}));
+      card.addEventListener("mouseleave", () => vid.pause());
+      track.appendChild(card);
+    });
+
+    const cards = track.querySelectorAll(".carousel-card");
+
+    function updateCarousel(){
+      cards.forEach((card, i) => {
+        let offset = i - activeIdx;
+        if (offset > films.length/2) offset -= films.length;
+        if (offset < -films.length/2) offset += films.length;
+
+        const abs = Math.abs(offset);
+        const dir = Math.sign(offset);
+        // curved-screen effect: stronger perspective bend at edges
+        const x = offset * (cardW + 12);
+        const y = -Math.pow(abs, 1.6) * 12;
+        const scale = Math.max(0.35, 1 - abs * 0.25);
+        const rotateY = offset * -55; // stronger tilt for curve feel
+        const z = -abs * 260;
+        const skewY = dir * abs * 8; // more twist
+        const skewX = abs * 3;
+        // curve screen: compress the far edge like a bent screen
+        const scaleX = 1 - abs * 0.12;
+        const opacity = abs > 3 ? 0 : 1 - abs * 0.22;
+
+        card.style.transform = `translateX(${x}px) translateY(${y}px) translateZ(${z}px) rotateY(${rotateY}deg) skewX(${skewX}deg) skewY(${skewY}deg) scaleX(${scaleX}) scale(${scale})`;
+        card.style.opacity = opacity;
+        card.style.zIndex = 100 - abs;
+        card.classList.toggle("active", i === activeIdx);
+      });
+    }
+
+    function loadFilm(i){
+      activeIdx = i;
+      const f = films[i];
+      player.src = f.src;
+      player.load();
+      player.play().catch(()=>{});
+      pTitle.firstChild.nodeValue = f.title;
+      pSub.textContent = f.sub;
+      pDesc.textContent = f.desc;
+      pRole.textContent = f.role;
+      pTags.innerHTML = "";
+      f.tags.forEach(t => {
+        const s = document.createElement("span");
+        s.textContent = t;
+        pTags.appendChild(s);
+      });
+      updateCarousel();
+    }
+
+    function stepFilm(direction){
+      loadFilm((activeIdx + direction + films.length) % films.length);
+    }
+
+    // drag
+    let isDown = false, startX = 0, dragX = 0;
+    carousel.addEventListener("pointerdown", e => {
+      isDown = true; startX = e.clientX; dragX = 0;
+    });
+    carousel.addEventListener("pointermove", e => {
+      if (!isDown) return;
+      dragX = e.clientX - startX;
+    });
+    carousel.addEventListener("pointerup", e => {
+      if (!isDown) return;
+      isDown = false;
+      if (dragX < -50) loadFilm((activeIdx + 1) % films.length);
+      else if (dragX > 50) loadFilm((activeIdx - 1 + films.length) % films.length);
+    });
+
+    // nav buttons
+    window.addEventListener("film-prev", () => stepFilm(-1));
+    window.addEventListener("film-next", () => stepFilm(1));
+
+    // wheel
+    carousel.addEventListener("wheel", e => {
+      e.preventDefault();
+      if (e.deltaY > 0) loadFilm((activeIdx + 1) % films.length);
+      else loadFilm((activeIdx - 1 + films.length) % films.length);
+    }, { passive:false });
+
+    updateCarousel();
+    loadFilm(0);
+  })();
+  </script>
+  <script src="assets/js/microslats.js"></script>
+  <script>
+    /* MicroSlats / signal preset — parameters kept in sync with the design spec */
+    MicroSlatsBackground.mount(document.getElementById('filmBackground'), {
+      preset: 'signal',
+      color: '#84cc16',
+      glintColor: '#06b6d4',
+      backgroundColor: '#000000',
+      slatWidth: 10,
+      slatHeight: 25,
+      gap: 3,
+      roundness: 0.75,
+      interactive: true,
+      cursorStrength: 1,
+      cursorSize: 40,
+      swirl: 0,
+      trail: 1.4,
+      lean: 0,
+      intro: true,
+      scale: 0.8,
+      speed: 1.2,
+      direction: 180,
+      chop: 0.25,
+      stretch: 0.8,
+      glint: 0.25,
+      contrast: 1.2,
+      perspective: 0,
+      fog: 0,
+      introDuration: 1.6,
+      paused: false
+    });
+  </script>
+</body>
+</html>
